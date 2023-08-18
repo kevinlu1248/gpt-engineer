@@ -5,13 +5,13 @@
 [![Twitter Follow](https://img.shields.io/twitter/follow/antonosika?style=social)](https://twitter.com/AntonOsika)
 
 
-**Specify what you want it to build, the AI asks for clarification, and then builds it.**
+🚀 **Specify what you want it to build, the AI asks for clarification, and then builds it.**
 
 GPT Engineer is made to be easy to adapt, extend, and make your agent learn how you want your code to look. It generates an entire codebase based on a prompt.
 
 [Demo](https://twitter.com/antonosika/status/1667641038104674306)
 
-## Project philosophy
+💡 ## Project philosophy
 
 - Simple to get value
 - Flexible and easy to add new own "AI steps". See `steps.py`.
@@ -21,7 +21,7 @@ GPT Engineer is made to be easy to adapt, extend, and make your agent learn how 
 - Fast handovers back and forth between AI and human
 - Simplicity, all computation is "resumable" and persisted to the filesystem
 
-## Usage
+⚙️ ## Usage
 
 Choose either **stable** or **development**.
 
@@ -35,7 +35,7 @@ For **development**:
 - `python -m pip install -e .`
   - (or: `make install && source venv/bin/activate` for a venv)
 
-**API Key**
+🔑 **API Key**
 Either just:
 - `export OPENAI_API_KEY=[your api key]`
 
@@ -45,7 +45,7 @@ Or:
 
 Check the [Windows README](./WINDOWS_README.md) for windows usage.
 
-**Running**
+🏃 **Running**
 
 - Create an empty folder. If inside the repo, you can run:
   - `cp -r projects/example/ projects/my-new-project`
@@ -55,7 +55,7 @@ Check the [Windows README](./WINDOWS_README.md) for windows usage.
 
 By running gpt-engineer you agree to our [terms](https://github.com/AntonOsika/gpt-engineer/blob/main/TERMS_OF_USE.md).
 
-**Results**
+🏆 **Results**
 
 Check the generated files in `projects/my-new-project/workspace`
 
