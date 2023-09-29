@@ -16,7 +16,7 @@ from gpt_engineer.chat_to_files import (
     to_files,
 )
 from gpt_engineer.db import DBs
-from gpt_engineer.file_selector import ask_for_files
+from gpt_engineer.file_selector import FILE_LIST_NAME, ask_for_files
 from gpt_engineer.learning import human_review_input
 
 Message = Union[AIMessage, HumanMessage, SystemMessage]
@@ -29,7 +29,7 @@ def setup_sys_prompt(dbs: DBs) -> str:
     """
     return (
         dbs.preprompts["roadmap"]
-        + dbs.preprompts["generate"]
+        + dbs.preprompts["generate"].replace("FILE_FORMAT", dbs.preprompts["file_format"])
         + "\nUseful to know:\n"
         + dbs.preprompts["philosophy"]
     )
@@ -40,47 +40,35 @@ def setup_sys_prompt_existing_code(dbs: DBs) -> str:
     Similar to code generation, but using an existing code base.
     """
     return (
-        dbs.preprompts["implement_on_existing"]
+        dbs.preprompts["improve"].replace("FILE_FORMAT", dbs.preprompts["file_format"])
         + "\nUseful to know:\n"
         + dbs.preprompts["philosophy"]
     )
 
 
-def get_prompt(dbs: DBs) -> str:
-    """
-    Loads the user's prompt for the project from prompt file
-    (While we migrate we have this fallback getter)
-    """
-    assert (
-        "prompt" in dbs.input or "main_prompt" in dbs.input
-    ), "Please put your prompt in the file `prompt` in the project directory"
-
-    if "prompt" not in dbs.input:
-        print(
-            colored("Please put the prompt in the file `prompt`, not `main_prompt", "red")
-        )
-        print()
-        return dbs.input["main_prompt"]
-
-    return dbs.input["prompt"]
-
-
 def curr_fn() -> str:
     """
     Get the name of the current function
-    NOTE: This will be the name of the function that called this function,
+
+    This will be the name of the function that called this function,
     so it serves to ensure we don't hardcode the function name in the step,
     but allow the step names to be refactored
     """
     return inspect.stack()[1].function
 
 
-# All steps below have the signature Step
+def lite_gen(ai: AI, dbs: DBs) -> List[Message]:
+    """Run the AI on only the main prompt and save the results"""
+    messages = ai.start(
+        dbs.input["prompt"], dbs.preprompts["file_format"], step_name=curr_fn()
+    )
+    to_files(messages[-1].content.strip(), dbs.workspace)
+    return messages
 
 
 def simple_gen(ai: AI, dbs: DBs) -> List[Message]:
-    """Run the AI on the main prompt and save the results"""
-    messages = ai.start(setup_sys_prompt(dbs), get_prompt(dbs), step_name=curr_fn())
+    """Run the AI on the default prompts and save the results"""
+    messages = ai.start(setup_sys_prompt(dbs), dbs.input["prompt"], step_name=curr_fn())
     to_files(messages[-1].content.strip(), dbs.workspace)
     return messages
 
@@ -90,16 +78,16 @@ def clarify(ai: AI, dbs: DBs) -> List[Message]:
     Ask the user if they want to clarify anything and save the results to the workspace
     """
     messages: List[Message] = [ai.fsystem(dbs.preprompts["clarify"])]
-    user_input = get_prompt(dbs)
+    user_input = dbs.input["prompt"]
     while True:
         messages = ai.next(messages, user_input, step_name=curr_fn())
         msg = messages[-1].content.strip()
 
-        if msg == "Nothing more to clarify.":
+        if "nothing to clarify" in msg.lower():
             break
 
         if msg.lower().startswith("no"):
-            print("Nothing more to clarify.")
+            print("Nothing to clarify.")
             break
 
         print()
@@ -117,73 +105,13 @@ def clarify(ai: AI, dbs: DBs) -> List[Message]:
             print()
             return messages
 
-        user_input += (
-            "\n\n"
-            "Is anything else unclear? If yes, only answer in the form:\n"
-            "{remaining unclear areas} remaining questions.\n"
-            "{Next question}\n"
-            'If everything is sufficiently clear, only answer "Nothing more to clarify.".'
-        )
+        user_input += """
+            \n\n
+            Is anything else unclear? If yes, ask another question.\n
+            Otherwise state: "Nothing to clarify"
+            """
 
     print()
-    return messages
-
-
-def gen_spec(ai: AI, dbs: DBs) -> List[Message]:
-    """
-    Generate a spec from the main prompt + clarifications and save the results to
-    the workspace
-    """
-    messages = [
-        ai.fsystem(setup_sys_prompt(dbs)),
-        ai.fsystem(f"Instructions: {dbs.input['prompt']}"),
-    ]
-
-    messages = ai.next(messages, dbs.preprompts["spec"], step_name=curr_fn())
-
-    dbs.memory["specification"] = messages[-1].content.strip()
-
-    return messages
-
-
-def respec(ai: AI, dbs: DBs) -> List[Message]:
-    """Asks the LLM to review the specs so far and reiterate them if necessary"""
-    messages = AI.deserialize_messages(dbs.logs[gen_spec.__name__])
-    messages += [ai.fsystem(dbs.preprompts["respec"])]
-
-    messages = ai.next(messages, step_name=curr_fn())
-    messages = ai.next(
-        messages,
-        (
-            "Based on the conversation so far, please reiterate the specification for "
-            "the program. "
-            "If there are things that can be improved, please incorporate the "
-            "improvements. "
-            "If you are satisfied with the specification, just write out the "
-            "specification word by word again."
-        ),
-        step_name=curr_fn(),
-    )
-
-    dbs.memory["specification"] = messages[-1].content.strip()
-    return messages
-
-
-def gen_unit_tests(ai: AI, dbs: DBs) -> List[dict]:
-    """
-    Generate unit tests based on the specification, that should work.
-    """
-    messages = [
-        ai.fsystem(setup_sys_prompt(dbs)),
-        ai.fuser(f"Instructions: {dbs.input['prompt']}"),
-        ai.fuser(f"Specification:\n\n{dbs.memory['specification']}"),
-    ]
-
-    messages = ai.next(messages, dbs.preprompts["unit_tests"], step_name=curr_fn())
-
-    dbs.memory["unit_tests"] = messages[-1].content.strip()
-    to_files(dbs.memory["unit_tests"], dbs.workspace)
-
     return messages
 
 
@@ -196,21 +124,12 @@ def gen_clarified_code(ai: AI, dbs: DBs) -> List[dict]:
     ] + messages[
         1:
     ]  # skip the first clarify message, which was the original clarify priming prompt
-    messages = ai.next(messages, dbs.preprompts["generate"], step_name=curr_fn())
+    messages = ai.next(
+        messages,
+        dbs.preprompts["generate"].replace("FILE_FORMAT", dbs.preprompts["file_format"]),
+        step_name=curr_fn(),
+    )
 
-    to_files(messages[-1].content.strip(), dbs.workspace)
-    return messages
-
-
-def gen_code_after_unit_tests(ai: AI, dbs: DBs) -> List[dict]:
-    """Generates project code after unit tests have been produced"""
-    messages = [
-        ai.fsystem(setup_sys_prompt(dbs)),
-        ai.fuser(f"Instructions: {dbs.input['prompt']}"),
-        ai.fuser(f"Specification:\n\n{dbs.memory['specification']}"),
-        ai.fuser(f"Unit tests:\n\n{dbs.memory['unit_tests']}"),
-    ]
-    messages = ai.next(messages, dbs.preprompts["generate"], step_name=curr_fn())
     to_files(messages[-1].content.strip(), dbs.workspace)
     return messages
 
@@ -218,11 +137,17 @@ def gen_code_after_unit_tests(ai: AI, dbs: DBs) -> List[dict]:
 def execute_entrypoint(ai: AI, dbs: DBs) -> List[dict]:
     command = dbs.workspace["run.sh"]
 
-    print("Do you want to execute this code?")
+    print()
+    print(
+        colored(
+            "Do you want to execute this code? (y/n)",
+            "red",
+        )
+    )
     print()
     print(command)
     print()
-    print('If yes, press enter. Otherwise, type "no"')
+    print("To execute, you can also press enter.")
     print()
     if input() not in ["", "y", "yes"]:
         print("Ok, not executing the code.")
@@ -298,83 +223,84 @@ def use_feedback(ai: AI, dbs: DBs):
         exit(1)
 
 
+def set_improve_filelist(ai: AI, dbs: DBs):
+    """Sets the file list for files to work with in existing code mode."""
+    ask_for_files(dbs.project_metadata, dbs.input)  # stores files as full paths.
+    return []
+
+
+def assert_files_ready(ai: AI, dbs: DBs):
+    """Checks that the required files are present for headless
+    improve code execution."""
+    assert (
+        "file_list.txt" in dbs.project_metadata
+    ), "For auto_mode file_list.txt need to be in your .gpteng folder."
+    assert "prompt" in dbs.input, "For auto_mode a prompt file must exist."
+    return []
+
+
+def get_improve_prompt(ai: AI, dbs: DBs):
+    """
+    Asks the user what they would like to fix.
+    """
+
+    if not dbs.input.get("prompt"):
+        dbs.input["prompt"] = input(
+            "\nWhat do you need to improve with the selected files?\n"
+        )
+
+    confirm_str = "\n".join(
+        [
+            "-----------------------------",
+            "The following files will be used in the improvement process:",
+            f"{FILE_LIST_NAME}:",
+            colored(str(dbs.project_metadata[FILE_LIST_NAME]), "green"),
+            "",
+            "The inserted prompt is the following:",
+            colored(f"{dbs.input['prompt']}", "green"),
+            "-----------------------------",
+            "",
+            "You can change these files in your project before proceeding.",
+            "",
+            "Press enter to proceed with modifications.",
+            "",
+        ]
+    )
+    input(confirm_str)
+    return []
+
+
 def improve_existing_code(ai: AI, dbs: DBs):
     """
-    Ask the user for a list of paths, ask the AI agent to
-    improve, fix or add a new functionality
-    A file selection will appear to select the files.
-    The terminal will ask for the prompt.
+    After the file list and prompt have been aquired, this function is called
+    to sent the formatted prompt to the LLM.
     """
-    ask_for_files(dbs.input)  # stores files as full paths.
-    files_info = get_code_strings(dbs.input)  # this only has file names not paths
 
-    dbs.input["prompt"] = input(
-        "\nWhat do you need to improve with the selected files?\n"
-    )
+    files_info = get_code_strings(
+        dbs.input, dbs.project_metadata
+    )  # this has file names relative to the workspace path
 
-    confirm_str = f"""
------------------------------
-The following files will be used in the improvement process:
-{dbs.input["file_list.txt"]}
-
-The inserted prompt is the following:
-'{dbs.input['prompt']}'
------------------------------
-
-You can change these files in .gpteng folder ({dbs.input.path}) in your project
-before proceeding.
-
-Press enter to proceed with modifications.
-
-"""
-    input(confirm_str)
     messages = [
         ai.fsystem(setup_sys_prompt_existing_code(dbs)),
-        ai.fuser(f"Instructions: {dbs.input['prompt']}"),
     ]
     # Add files as input
     for file_name, file_str in files_info.items():
         code_input = format_file_to_input(file_name, file_str)
         messages.append(ai.fuser(f"{code_input}"))
 
-    output_format_str = """
-Make sure the output of any files is in the following format where
-FILENAME is the file name including the file extension, and the file path.  Do not
-forget to include the file path.
-LANG is the markup code block language for the code's language, and CODE is the code:
+    messages.append(ai.fuser(f"Request: {dbs.input['prompt']}"))
 
-FILENAME
-```LANG
-CODE
-```
-"""
+    messages = ai.next(messages, step_name=curr_fn())
 
-    messages = ai.next(messages, output_format_str, step_name=curr_fn())
-    # Maybe we should add another step called "replace" or "overwrite"
     overwrite_files(messages[-1].content.strip(), dbs)
-    return messages
-
-
-def fix_code(ai: AI, dbs: DBs):
-    messages = AI.deserialize_messages(dbs.logs[gen_code_after_unit_tests.__name__])
-    code_output = messages[-1].content.strip()
-    messages = [
-        ai.fsystem(setup_sys_prompt(dbs)),
-        ai.fuser(f"Instructions: {dbs.input['prompt']}"),
-        ai.fuser(code_output),
-        ai.fsystem(dbs.preprompts["fix_code"]),
-    ]
-    messages = ai.next(
-        messages, "Please fix any errors in the code above.", step_name=curr_fn()
-    )
-    to_files(messages[-1].content.strip(), dbs.workspace)
     return messages
 
 
 def human_review(ai: AI, dbs: DBs):
     """Collects and stores human review of the code"""
     review = human_review_input()
-    dbs.memory["review"] = review.to_json()  # type: ignore
+    if review is not None:
+        dbs.memory["review"] = review.to_json()  # type: ignore
     return []
 
 
@@ -382,19 +308,27 @@ class Config(str, Enum):
     DEFAULT = "default"
     BENCHMARK = "benchmark"
     SIMPLE = "simple"
-    TDD = "tdd"
-    TDD_PLUS = "tdd+"
+    LITE = "lite"
     CLARIFY = "clarify"
-    RESPEC = "respec"
     EXECUTE_ONLY = "execute_only"
     EVALUATE = "evaluate"
     USE_FEEDBACK = "use_feedback"
     IMPROVE_CODE = "improve_code"
+    EVAL_IMPROVE_CODE = "eval_improve_code"
+    EVAL_NEW_CODE = "eval_new_code"
 
 
-# Define the steps to run for different configs
 STEPS = {
     Config.DEFAULT: [
+        simple_gen,
+        gen_entrypoint,
+        execute_entrypoint,
+        human_review,
+    ],
+    Config.LITE: [
+        lite_gen,
+    ],
+    Config.CLARIFY: [
         clarify,
         gen_clarified_code,
         gen_entrypoint,
@@ -410,55 +344,18 @@ STEPS = {
         gen_entrypoint,
         execute_entrypoint,
     ],
-    Config.TDD: [
-        gen_spec,
-        gen_unit_tests,
-        gen_code_after_unit_tests,
-        gen_entrypoint,
-        execute_entrypoint,
-        human_review,
+    Config.USE_FEEDBACK: [use_feedback, gen_entrypoint, execute_entrypoint, human_review],
+    Config.EXECUTE_ONLY: [execute_entrypoint],
+    Config.EVALUATE: [execute_entrypoint, human_review],
+    Config.IMPROVE_CODE: [
+        set_improve_filelist,
+        get_improve_prompt,
+        improve_existing_code,
     ],
-    Config.TDD_PLUS: [
-        gen_spec,
-        gen_unit_tests,
-        gen_code_after_unit_tests,
-        fix_code,
-        gen_entrypoint,
-        execute_entrypoint,
-        human_review,
-    ],
-    Config.CLARIFY: [
-        clarify,
-        gen_clarified_code,
-        gen_entrypoint,
-        execute_entrypoint,
-        human_review,
-    ],
-    Config.RESPEC: [
-        gen_spec,
-        respec,
-        gen_unit_tests,
-        gen_code_after_unit_tests,
-        fix_code,
-        gen_entrypoint,
-        execute_entrypoint,
-        human_review,
-    ],
-    Config.USE_FEEDBACK: [
-        use_feedback,
-        gen_entrypoint,
-        execute_entrypoint,
-        human_review,
-    ],
-    Config.EXECUTE_ONLY: [
-        execute_entrypoint,
-    ],
-    Config.EVALUATE: [
-        execute_entrypoint,
-        human_review,
-    ],
-    Config.IMPROVE_CODE: [improve_existing_code],
+    Config.EVAL_IMPROVE_CODE: [assert_files_ready, improve_existing_code],
+    Config.EVAL_NEW_CODE: [simple_gen],
 }
+
 
 # Future steps that can be added:
 # run_tests_and_fix_files

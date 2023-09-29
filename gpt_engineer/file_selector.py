@@ -7,7 +7,10 @@ import tkinter.filedialog as fd
 from pathlib import Path
 from typing import List, Union
 
-IGNORE_FOLDERS = {"site-packages", "node_modules"}
+from gpt_engineer.db import DB, DBs
+
+IGNORE_FOLDERS = {"site-packages", "node_modules", "venv"}
+FILE_LIST_NAME = "file_list.txt"
 
 
 class DisplayablePath(object):
@@ -175,10 +178,14 @@ class TerminalFileSelector:
             List[str]: list of selected paths
         """
         user_input = input(
-            "\nSelect files by entering the numbers separated by commas/spaces or "
-            + "specify range with a dash. "
-            + "Example: 1,2,3-5,7,9,13-15,18,20 (enter 'all' to select everything)"
-            + "\n\nSelect files:"
+            "\n".join(
+                [
+                    "Select files by entering the numbers separated by commas/spaces or",
+                    "specify range with a dash. ",
+                    "Example: 1,2,3-5,7,9,13-15,18,20 (enter 'all' to select everything)",
+                    "\n\nSelect files:",
+                ]
+            )
         )
         selected_paths = []
         regex = r"\d+(-\d+)?([, ]\d+(-\d+)?)*"
@@ -226,7 +233,7 @@ def is_in_ignoring_extensions(path: Path) -> bool:
     return is_hidden and is_pycache
 
 
-def ask_for_files(db_input) -> None:
+def ask_for_files(metadata_db: DB, workspace_db: DB) -> None:
     """
     Ask user to select files to improve.
     It can be done by terminal, gui, or using the old selection.
@@ -234,24 +241,33 @@ def ask_for_files(db_input) -> None:
     Returns:
         dict[str, str]: Dictionary where key = file name and value = file path
     """
+    if FILE_LIST_NAME in metadata_db:
+        print(
+            f"File list detected at {metadata_db.path / FILE_LIST_NAME}. "
+            "Edit or delete it if you want to select new files."
+        )
+        return
+
     use_last_string = ""
-    is_valid_selection = False
-    can_use_last = False
-    if "file_list.txt" in db_input:
-        can_use_last = True
+    if FILE_LIST_NAME in metadata_db:
         use_last_string = (
             "3. Use previous file list (available at "
-            + f"{os.path.join(db_input.path, 'file_list.txt')})\n"
+            + f"{os.path.join(metadata_db.path, FILE_LIST_NAME)})\n"
         )
         selection_number = 3
     else:
         selection_number = 1
-    selection_str = f"""How do you want to select the files?
+    selection_str = "\n".join(
+        [
+            "How do you want to select the files?",
+            "",
+            "1. Use File explorer.",
+            "2. Use Command-Line.",
+            use_last_string if len(use_last_string) > 1 else "",
+            f"Select option and press Enter (default={selection_number}): ",
+        ]
+    )
 
-1. Use Command-Line.
-2. Use File explorer.
-{use_last_string if len(use_last_string) > 1 else ""}
-Select option and press Enter (default={selection_number}): """
     file_path_list = []
     selected_number_str = input(selection_str)
     if selected_number_str:
@@ -260,33 +276,26 @@ Select option and press Enter (default={selection_number}): """
         except ValueError:
             print("Invalid number. Select a number from the list above.\n")
             sys.exit(1)
+
     if selection_number == 1:
-        # Open terminal selection
-        file_path_list = terminal_file_selector()
-        is_valid_selection = True
-    elif selection_number == 2:
         # Open GUI selection
-        file_path_list = gui_file_selector()
-        is_valid_selection = True
-    else:
-        if can_use_last and selection_number == 3:
-            # Use previous file list
-            is_valid_selection = True
-    if not is_valid_selection:
+        file_path_list = gui_file_selector(workspace_db.path)
+    elif selection_number == 2:
+        # Open terminal selection
+        file_path_list = terminal_file_selector(workspace_db.path)
+    if (
+        selection_number <= 0
+        or selection_number > 3
+        or (selection_number == 3 and not use_last_string)
+    ):
         print("Invalid number. Select a number from the list above.\n")
         sys.exit(1)
 
-    file_list_string = ""
     if not selection_number == 3:
-        # New files
-        for file_path in file_path_list:
-            file_list_string += str(file_path) + "\n"
-
-        # Write in file_list so the user can edit and remember what was done
-        db_input["file_list.txt"] = file_list_string
+        metadata_db[FILE_LIST_NAME] = "\n".join(file_path_list)
 
 
-def gui_file_selector() -> List[str]:
+def gui_file_selector(input_path: str) -> List[str]:
     """
     Display a tkinter file selection window to select context files.
     """
@@ -296,18 +305,18 @@ def gui_file_selector() -> List[str]:
     file_list = list(
         fd.askopenfilenames(
             parent=root,
-            initialdir=os.getcwd(),
+            initialdir=input_path,
             title="Select files to improve (or give context):",
         )
     )
     return file_list
 
 
-def terminal_file_selector() -> List[str]:
+def terminal_file_selector(input_path: str) -> List[str]:
     """
     Display a terminal file selection to select context files.
     """
-    file_selector = TerminalFileSelector(Path(os.getcwd()))
+    file_selector = TerminalFileSelector(Path(input_path))
     file_selector.display()
     selected_list = file_selector.ask_for_selection()
     return selected_list
