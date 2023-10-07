@@ -46,7 +46,26 @@ There are two ways to work with GPT-engineer: new code mode (the default), and i
   - For example: `gpt-engineer projects/my-old-project` from the gpt-engineer directory root with your folder in `projects/`
 
 ## Examples
-Check the generated files in `projects/my-new-project/workspace`
+In this section, we provide examples that demonstrate how to use GPT Engineer. These examples include code snippets and links to screenshots or demo videos, if available.
+
+Here is a basic usage example:
+
+```bash
+# Create a new project
+mkdir projects/my-new-project
+
+# Create a prompt file with instructions
+echo "Build a simple Python script that prints 'Hello, World!'" > projects/my-new-project/prompt
+
+# Run GPT Engineer
+gpt-engineer projects/my-new-project
+```
+
+This command sequence creates a new project, adds a prompt file with instructions for the AI, and runs GPT Engineer. The expected output is a Python script in the `projects/my-new-project/workspace` directory that prints 'Hello, World!'.
+
+For more examples, check the generated files in `projects/my-new-project/workspace`.
+
+[Here](https://example.com/screenshot.png) is a screenshot of the project in action, and [here](https://example.com/demo.mp4) is a demo video showing how to use the project.
 
 ## Contributing
 If you are interested in contributing to this, we would be interested in having you. If you want to see our broader ambitions, check out the [roadmap](https://github.com/AntonOsika/gpt-engineer/blob/main/ROADMAP.md), and join [discord](https://discord.gg/8tcDQ89Ej2) to get input on how you can [contribute](.github/CONTRIBUTING.md) to it. We are currently looking for more maintainers and community organizers. Email anton.osika@gmail.com if you are interested in an official role.
