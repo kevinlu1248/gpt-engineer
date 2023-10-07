@@ -66,3 +66,9 @@ By running gpt-engineer you agree to our [ToS](https://github.com/AntonOsika/gpt
 ### Results
 
 - Check the generated files in `projects/my-new-project/workspace`
+
+For more information, please refer to the [API documentation](https://gpt-engineer.readthedocs.io/en/latest/), [FAQ page](https://github.com/AntonOsika/gpt-engineer/wiki/FAQ), or [user guide](https://github.com/AntonOsika/gpt-engineer/wiki/User-Guide).
+
+### Results
+
+- Check the generated files in `projects/my-new-project/workspace`
