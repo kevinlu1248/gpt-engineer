@@ -22,30 +22,74 @@ GPT Engineer is made to be easy to adapt, extend, and make your agent learn how 
 - Fast handovers, back and forth, between AI and human
 - Simplicity, all computation is "resumable" and persisted to the filesystem
 
+## Table of Contents
+1. [Setup](#setup)
+2. [API Key Configuration](#api-key-configuration)
+3. [Usage](#usage)
+4. [Features](#features)
+5. [Vision](#vision)
+6. [Example](#example)
+
 ## Setup
 
-Choose either **stable** or **development**.
+There are two ways to install GPT Engineer: using the stable release or the development version.
 
-For **stable** release:
+### Stable Release
 
-- `python -m pip install gpt-engineer`
+To install the stable release, run the following command in your terminal:
 
-For **development**:
-- `git clone https://github.com/AntonOsika/gpt-engineer.git`
-- `cd gpt-engineer`
-- `python -m pip install -e .`
-  - (or: `make install && source venv/bin/activate` for a venv)
+```bash
+python -m pip install gpt-engineer
+```
 
-**API Key**
+This command uses pip, Python's package installer, to download and install GPT Engineer from the Python Package Index (PyPI).
 
-Choose **one** of:
-- Export env variable (you can add this to .bashrc so that you don't have to do it each time you start the terminal)
-    - `export OPENAI_API_KEY=[your api key]`
-- .env file:
-    - Create a copy of `.env.template` named `.env`
-    - Add your OPENAI_API_KEY in .env
-- Custom model:
-    - See [docs](https://gpt-engineer.readthedocs.io/en/latest/open_models.html), supports local model, azure, etc.
+### Development Version
+
+If you want to use the development version of GPT Engineer, you need to clone the repository and install the package from the source code. Run the following commands in your terminal:
+
+```bash
+git clone https://github.com/AntonOsika/gpt-engineer.git
+cd gpt-engineer
+python -m pip install -e .
+```
+
+The `pip install -e .` command installs the package in editable mode. This means that changes to the source code will be reflected in the installed package without needing to reinstall it.
+
+Alternatively, you can use a virtual environment to isolate the dependencies of GPT Engineer from your global Python environment. To do this, run the following commands instead:
+
+```bash
+make install
+source venv/bin/activate
+```
+
+## API Key Configuration
+
+GPT Engineer uses the OpenAI API to generate code. To use the API, you need an API key, which is a unique identifier that authenticates requests associated with your project.
+
+There are three ways to configure your API key in GPT Engineer:
+
+### Environment Variable
+
+You can export your API key as an environment variable. This means that the key will be available in your terminal session and can be accessed by GPT Engineer. To do this, run the following command in your terminal, replacing `[your api key]` with your actual API key:
+
+```bash
+export OPENAI_API_KEY=[your api key]
+```
+
+You can add this command to your .bashrc file to automatically set the environment variable every time you start a new terminal session.
+
+### .env File
+
+You can also store your API key in a .env file. To do this, create a copy of the `.env.template` file in the root directory of the project and name it `.env`. Then, open the .env file and replace `[your api key]` with your actual API key:
+
+```bash
+OPENAI_API_KEY=[your api key]
+```
+
+### Custom Model
+
+If you have a custom model, you can configure GPT Engineer to use it instead of the OpenAI API. See the [documentation](https://gpt-engineer.readthedocs.io/en/latest/open_models.html) for instructions on how to do this. This method supports local models, Azure models, and others.
 
 Check the [Windows README](./WINDOWS_README.md) for windows usage.
 
