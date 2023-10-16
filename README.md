@@ -14,13 +14,13 @@ GPT Engineer is made to be easy to adapt, extend, and make your agent learn how 
 
 ## Project philosophy
 
-- Simple to get value
-- Flexible and easy to add new own "AI steps". See `steps.py`.
-- Incrementally build towards a user experience of:
-  1. high level prompting
-  2. giving feedback to the AI that it will remember over time
-- Fast handovers, back and forth, between AI and human
-- Simplicity, all computation is "resumable" and persisted to the filesystem
+Our project philosophy is based on the following principles:
+
+- **Simplicity**: We aim to make it simple for users to get value from our tool.
+- **Flexibility**: Our tool is flexible and easy to adapt. Users can add their own "AI steps" (see `steps.py` for more information).
+- **Incremental Building**: We strive to incrementally build towards a user experience that involves high-level prompting and the ability to give feedback to the AI that it will remember over time.
+- **Fast Handovers**: We believe in fast handovers, back and forth, between AI and human.
+- **Persistence**: All computation is "resumable" and persisted to the filesystem for simplicity and ease of use.
 
 ## Setup
 
@@ -28,13 +28,16 @@ Choose either **stable** or **development**.
 
 For **stable** release:
 
-- `python -m pip install gpt-engineer`
+- Open your terminal.
+- Run the command `python -m pip install gpt-engineer`.
 
 For **development**:
-- `git clone https://github.com/AntonOsika/gpt-engineer.git`
-- `cd gpt-engineer`
-- `python -m pip install -e .`
-  - (or: `make install && source venv/bin/activate` for a venv)
+
+- Open your terminal.
+- Run the command `git clone https://github.com/AntonOsika/gpt-engineer.git` to clone the repository.
+- Navigate to the cloned repository by running `cd gpt-engineer`.
+- Install the necessary dependencies by running `python -m pip install -e .`.
+  - Alternatively, you can create a virtual environment by running `make install && source venv/bin/activate`.
 
 **API Key**
 
@@ -54,16 +57,18 @@ Check the [Windows README](./WINDOWS_README.md) for windows usage.
 There are two ways to work with GPT-engineer: new code mode (the default), and improve existing code mode (the `-i` option).
 
 ### Creating new code
-- Create an empty folder for your project anywhere on your computer
-- Create a file called `prompt` (no extension) inside your new folder and fill it with instructions
-- Run `gpt-engineer <project_dir>` with a relative path to your folder
-  - For example: `gpt-engineer projects/my-new-project` from the gpt-engineer directory root with your new folder in `projects/`
+To create new code:
+
+1. Create an empty folder for your project anywhere on your computer.
+2. Inside your new folder, create a file called `prompt` (no extension) and fill it with instructions. For example, you might write "Create a Python function that calculates the factorial of a number."
+3. Run `gpt-engineer <project_dir>` with a relative path to your folder. For example, if you're in the gpt-engineer directory root and your new folder is in `projects/`, you would run `gpt-engineer projects/my-new-project`.
 
 ### Improving Existing Code
-- Locate a folder with code which you want to improve anywhere on your computer
-- Create a file called `prompt` (no extension) inside your new folder and fill it with instructions for how you want to improve the code
-- Run `gpt-engineer <project_dir> -i` with a relative path to your folder
-  - For example: `gpt-engineer projects/my-old-project` from the gpt-engineer directory root with your folder in `projects/`
+To improve existing code:
+
+1. Locate a folder with code which you want to improve anywhere on your computer.
+2. Inside this folder, create a file called `prompt` (no extension) and fill it with instructions for how you want to improve the code. For example, you might write "Refactor the function `calculate_factorial` to use recursion."
+3. Run `gpt-engineer <project_dir> -i` with a relative path to your folder. For example, if you're in the gpt-engineer directory root and your folder is in `projects/`, you would run `gpt-engineer projects/my-old-project -i`.
 
 By running gpt-engineer you agree to our [terms](https://github.com/AntonOsika/gpt-engineer/blob/main/TERMS_OF_USE.md).
 
@@ -88,13 +93,25 @@ do everything in your browser:
 
 ## Features
 
-You can specify the "identity" of the AI agent by editing the files in the `preprompts` folder.
+- **AI Identity Customization**: You can specify the "identity" of the AI agent by editing the files in the `preprompts` folder. This allows you to customize the behavior and output of the AI.
+- **Prompt Evolution**: Editing the `preprompts`, and evolving how you write the project prompt, is how you make the agent remember things between projects. This allows for a more personalized and consistent experience.
+- **Communication History**: Each step in `steps.py` will have its communication history with GPT4 stored in the logs folder, and can be rerun with `scripts/rerun_edited_message_logs.py`. This allows for easy debugging and improvement of the AI's performance.
+- **Open Source Model Support**: You can also run with open source models, like WizardCoder. See the [documentation](https://gpt-engineer.readthedocs.io/en/latest/open_models.html) for example instructions. This provides flexibility and allows you to use the model that best suits your needs.
 
-Editing the `preprompts`, and evolving how you write the project prompt, is how you make the agent remember things between projects.
+## Contributing
 
-Each step in `steps.py` will have its communication history with GPT4 stored in the logs folder, and can be rerun with `scripts/rerun_edited_message_logs.py`.
+We welcome contributions from the community! If you're interested in contributing, here's how you can get started:
 
-You can also run with open source models, like WizardCoder. See the [documentation](https://gpt-engineer.readthedocs.io/en/latest/open_models.html) for example instructions.
+- **Issues**: If you find a bug or want to suggest a new feature, please create an issue in our GitHub repository.
+- **Pull Requests**: If you want to contribute code, please fork the repository, make your changes, and submit a pull request. We'll review it as soon as we can.
+- **Code of Conduct**: We expect all contributors to follow our code of conduct. Please make sure to read it before contributing.
+
+## Contact
+
+If you have any questions or want to get in touch with the project maintainers, you can reach us at:
+
+- Email: anton.osika@gmail.com
+- Discord: [GPT Engineer Discord](https://discord.gg/8tcDQ89Ej2)
 
 
 ## Vision
